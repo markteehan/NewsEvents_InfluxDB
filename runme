@@ -148,42 +148,12 @@ SHOW CONNECTORS;
 EOF
 runSQL
 
-#echo ccloud ksql app create ${USER}
-#     ccloud ksql app create ${USER}
-
-# get the ksql Cluster ID
-#SLEEP=60
-#echo "Sleeping for ${SLEEP} secs while kSQL app ${APP} is created.."
-##sleep $AVRO_GDELT_EVENT{SLEEP}
-#PAUSE="1 2 3 4 5 6 7 8 9 10"
-#for i in `echo $PAUSE`
-#do 
-#  date
-#  ccloud ksql app list
-#  sleep 10
-#done
-#
-#KSQL_CLUSTER=`ccloud ksql app list|grep ${USER}|awk '{print $1}'`
-#set -x
-#ccloud ksql app configure-acls ${KSQL_CLUSTER} ${USER}_AVRO_GDELT_EVENT --cluster ${CLUSTER}
-#ccloud ksql app configure-acls ${KSQL_CLUSTER} ${USER}_COUNTRIES        --cluster ${CLUSTER}
-#set +x
-
-#➜  37_e2e ccloud kafka acl create --allow --service-account 62372 --operation READ --topic '*'
-#➜  37_e2e ccloud kafka acl create --allow --service-account 62372 --operation WRITE --topic '*'
-
-
-echo;echo;echo
-
-
-
 echo "[] Create a base stream (A0) over each topic"
 cat <<EOF >/tmp/cmd.sql
 CREATE STREAM ${USER}_A0_STR_GDELT_EVENT WITH (kafka_topic='${USER}_A0_gdelt_event',value_format='avro',partitions=6);
 CREATE STREAM ${USER}_A0_STR_COUNTRIES   WITH (kafka_topic='${USER}_A0_countries'  ,value_format='avro',partitions=6);
 EOF
 runSQL
-
 
 
 echo "[] Repartition a topic to set the key to ACTOR1COUNTRYCODE"
@@ -199,28 +169,30 @@ CREATE TABLE ${USER}_A2_TAB_GDELT_EVENT WITH (kafka_topic='${USER}_A2_TAB_GDELT_
 EOF
 runSQL
 
-echo "[] Drop this measurement from InfluxDB before starting the new stream"
-echo "/usr/bin/influx --database gdelt --execute 'DROP MEASUREMENT ${USER}_B2_TAB_GDELT_EVENT;'" > /tmp/drop.cmd
+echo "[] Drop measurement (if exists) from InfluxDB before starting the new stream. Errors can be ignored."
+echo "/usr/bin/influx --database gdelt --execute 'DROP MEASUREMENT totals_all;'" > /tmp/drop.cmd
 chmod +x /tmp/drop.cmd
 docker cp /tmp/drop.cmd influxdb:/tmp/drop.cmd
 docker-compose exec influxdb sh /tmp/drop.cmd
 
-echo "[] Start a Sink connector stream to InfluxDB"
+Pause
+echo "[]  Create a kSQLDB Sink Connector stream to InfluxDB for topic ${USER}_A2_TAB_GDELT_EVENT"
 cat <<EOF >/tmp/cmd.sql
-CREATE SINK CONNECTOR ${USER}_A3_TAB_GDELT_EVENT_SINK WITH ( 'connector.class'='io.confluent.influxdb.InfluxDBSinkConnector','tasks.max'='1','topics'='${USER}_A2_TAB_GDELT_EVENT','influxdb.url'='http://influxdb:8086', 'influxdb.db'='gdelt','influx.db.username'='root','influxdb.password'='root','measurement.name.format'='${USER}_A3_TAB_GDELT_EVENT','value.converter'='org.apache.kafka.connect.json.JsonConverter','auto.register.schemas'='false');
+CREATE SINK CONNECTOR ${USER}_A3_TAB_GDELT_EVENT_SINK WITH ( 'connector.class'='io.confluent.influxdb.InfluxDBSinkConnector','tasks.max'='1','topics'='${USER}_A2_TAB_GDELT_EVENT','influxdb.url'='http://influxdb:8086', 'influxdb.db'='gdelt','influx.db.username'='root','influxdb.password'='root','measurement.name.format'='totals_all','value.converter'='org.apache.kafka.connect.json.JsonConverter','auto.register.schemas'='false');
 EOF
 runSQL
 
-echo "[] Reality check: did message stream to InfluxDB?"
-echo "/usr/bin/influx --database gdelt --execute 'SELECT * FROM ${USER}_A3_TAB_GDELT_EVENT;'" > /tmp/influx.cmd
+echo "[] Reality check: did message stream to InfluxDB?. If you see incrementing numbers, it worked."
+echo "/usr/bin/influx --database gdelt --execute 'SELECT * FROM totals_all;'" > /tmp/influx.cmd
 chmod +x /tmp/influx.cmd
 docker cp /tmp/influx.cmd influxdb:/tmp/influx.cmd
 echo;echo "echo: end-to-end Test: rowcount of streamed rows Sink'd into Influx (on your mac)"
 docker-compose exec influxdb sh /tmp/influx.cmd
 echo "Run this command to get the latest number:"
 echo docker-compose exec influxdb sh /tmp/influx.cmd
+Pause
 
-echo "[] Start the Second streaming thread (B) by joining GDELT_EVENTs to COUNTRIES to get the Country Name as ISO3"
+echo "[] Start a second kSQLDB thread ('B') by joining GDELT_EVENT to COUNTRIES to add the Country Name as ISO3"
 cat <<EOF >/tmp/cmd.sql
 CREATE STREAM ${USER}_B1_STR_GDELT_EVENT_COUNTRY WITH (kafka_topic='${USER}_B1_STR_GDELT_EVENT_COUNTRY', value_format='avro',partitions=6) AS SELECT TS, EVENTID as EVENTID, MONTHYEAR,YEAR,FRACTIONDATE,ACTOR1CODE,ISO3, ACTOR1NAME,ACTOR1COUNTRYCODE,ACTOR1KNOWNGROUPCODE,ACTOR1ETHNICCODE,ACTOR1RELIGION1CODE,ACTOR1RELIGION2CODE,ACTOR1TYPE1CODE,ACTOR1TYPE2CODE,ACTOR1TYPE3CODE,ACTOR2CODE,ACTOR2NAME,ACTOR2COUNTRYCODE,ACTOR2KNOWNGROUPCODE,ACTOR2ETHNICCODE,ACTOR2RELIGION1CODE,ACTOR2RELIGION2CODE,ACTOR2TYPE1CODE,ACTOR2TYPE2CODE,ACTOR2TYPE3CODE,ISROOTEVENT,EVENTCODE,EVENTBASECODE,EVENTROOTCODE,QUADCLASS,GOLDSTEINSCALE,NUMMENTIONS,NUMSOURCES,NUMARTICLES,AVGTONE,ACTOR1GEO_TYPE,ACTOR1GEO_FULLNAME,ACTOR1GEO_COUNTRYCODE,ACTOR1GEO_ADM1CODE,ACTOR1GEO_ADM2CODE,ACTOR1GEO_LAT,ACTOR1GEO_LONG,ACTOR1GEO_FEATUREID,ACTOR2GEO_TYPE,ACTOR2GEO_FULLNAME,ACTOR2GEO_COUNTRYCODE,ACTOR2GEO_ADM1CODE,ACTOR2GEO_ADM2CODE,ACTOR2GEO_LAT,ACTOR2GEO_LONG,ACTOR2GEO_FEATUREID,ACTIONGEO_TYPE,ACTIONGEO_FULLNAME,ACTIONGEO_COUNTRYCODE,ACTIONGEO_ADM1CODE,ACTIONGEO_ADM2CODE,ACTIONGEO_LAT,ACTIONGEO_LONG,ACTIONGEO_FEATUREID,DATEADDED,SOURCEURL, NAME as ACTOR1_COUNTRYNAME FROM ${USER}_A0_STR_GDELT_EVENT JOIN ${USER}_A0_STR_COUNTRIES WITHIN 60 MINUTES ON (ACTOR1COUNTRYCODE=ISO3);
 EOF
@@ -234,26 +206,28 @@ EOF
 runSQL
 
 #clean up the InfluxDB Sink measurement first...
-echo "[] Drop this measurement from InfluxDB before starting the new stream"
-echo "/usr/bin/influx --database gdelt --execute 'DROP MEASUREMENT ${USER}_B2_TAB_GDELT_EVENT_COUNTRY;'" > /tmp/drop.cmd
+echo "[] Drop this measurement if exists from InfluxDB before starting the new stream. Errors can be ignored."
+echo "/usr/bin/influx --database gdelt --execute 'DROP MEASUREMENT totals_by_country;'" > /tmp/drop.cmd
 docker cp /tmp/drop.cmd influxdb:/tmp/drop.cmd
 docker-compose exec influxdb sh /tmp/drop.cmd
-
+Pause
 
 echo "[] Start the second Sink connector stream to InfluxDB"
 cat <<EOF >/tmp/cmd.sql
-CREATE SINK CONNECTOR ${USER}_B3_TAB_GDELT_EVENT_COUNTRY_SINK WITH ( 'connector.class'='io.confluent.influxdb.InfluxDBSinkConnector','tasks.max'='1','topics'='${USER}_B2_TAB_GDELT_EVENT_COUNTRY','influxdb.url'='http://influxdb:8086', 'influxdb.db'='gdelt','influx.db.username'='root','influxdb.password'='root','measurement.name.format'='${USER}_B2_TAB_GDELT_EVENT_COUNTRY','value.converter'='org.apache.kafka.connect.json.JsonConverter','auto.register.schemas'='false');
+CREATE SINK CONNECTOR ${USER}_B3_TAB_GDELT_EVENT_COUNTRY_SINK WITH ( 'connector.class'='io.confluent.influxdb.InfluxDBSinkConnector','tasks.max'='1','topics'='${USER}_B2_TAB_GDELT_EVENT_COUNTRY','influxdb.url'='http://influxdb:8086', 'influxdb.db'='gdelt','influx.db.username'='root','influxdb.password'='root','measurement.name.format'='totals_by_country','value.converter'='org.apache.kafka.connect.json.JsonConverter','auto.register.schemas'='false');
 EOF
 runSQL
 
 
-echo "[] Second reality check: did message stream to InfluxDB?"
-echo "/usr/bin/influx --database gdelt --execute 'SELECT * FROM ${USER}_B2_TAB_GDELT_EVENT_COUNTRY;'" > /tmp/influx2.cmd
+echo "/usr/bin/influx --database gdelt --execute 'SELECT * FROM totals_by_country;'" > /tmp/influx2.cmd
 chmod +x /tmp/influx2.cmd
 docker cp /tmp/influx2.cmd influxdb:/tmp/influx2.cmd
-echo;echo "echo: end-to-end Test: rowcount of streamed rows Sink'd into Influx (on your mac)"
 docker-compose exec influxdb sh /tmp/influx2.cmd
-echo "Run this command to get the latest number:"
+echo "[] Second reality check: did messages stream to a measurement in InfluxDB?"
+echo;echo "echo: end-to-end Test: if you see totals by country above, then the stream processing pipe is working"
+echo "Rerun this command to query this influxDB measurement:"
 echo docker-compose exec influxdb sh /tmp/influx2.cmd
 
 echo "[] Full streaming pipeline created! Now run getNews to load up yesterdays news (usually 10-20 mins)"
+echo "[] Open http://localhost:8888 to plot the measurement in Chronograf"
+

@@ -43,7 +43,7 @@ Reruns:
 
 Viewing the Results:
 - runme will query influxDB to check if data is streaming back down from CC. 
-- Chronograf is running but I havent built a country-counter dashboard yet.
+- Open Chronograf on http://localhost:8888 and import dashboard NewsActivity.json to view the streaming pipeline
 
 
 
