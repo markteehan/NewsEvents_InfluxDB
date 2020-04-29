@@ -38,24 +38,9 @@ services:
     entrypoint: /bin/sh
     tty: true
     environment:
-#     KSQL_LISTENERS: http://0.0.0.0:8088
-#     KSQL_BOOTSTRAP_SERVERS: "https://pkc-l9wvm.ap-southeast-1.aws.confluent.cloud:9092"
-#     KSQL_SECURITY_PROTOCOL: "SASL_SSL"
-#     KSQL_SASL_MECHANISM: "PLAIN"
-#     KSQL_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: "HTTPS"
-#     KSQL_SASL_JAAS_CONFIG: |
-#          org.apache.kafka.common.security.plain.PlainLoginModule required \
-#          username="3QIZLTBOQYVZMLJQ" \
-#          password="7gBRUNKe8fvPk2QWVYbPW9yXg5EwA7UbN2QJ+S8/+HrNjrjGQ83SklyTKJEgoKB6";
-#     KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
-#     KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: "true"
-#     KSQL_KSQL_CONNECT_URL: http://kafka-connect-01:8083
       KSQL_KSQL_SCHEMA_REGISTRY_URL: "https://psrc-epkz2.ap-southeast-2.aws.confluent.cloud"
       KSQL_KSQL_SCHEMA_REGISTRY_BASIC_AUTH_CREDENTIALS_SOURCE: "USER_INFO" 
       KSQL_KSQL_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XV7XMYL2PUFOG2US:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
-#     KSQL_KSQL_SERVICE_ID: "${USER}_"
-#     KSQL_KSQL_INTERNAL_TOPIC_REPLICAS: 3
-#     KSQL_AUTO_OFFSET_RESET: "earliest"
 
   kafka-connect-01:
     image: confluentinc/cp-kafka-connect:5.4.0
@@ -119,9 +104,6 @@ services:
       CONNECT_SCHEMA_REGISTRY_URL: "https://psrc-epkz2.ap-southeast-2.aws.confluent.cloud"
       CONNECT_BASIC_AUTH_CREDENTIALS_SOURCE: "USER_INFO" 
       CONNECT_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XV7XMYL2PUFOG2US:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
-#      CONNECT_PRODUCER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor"
-#      CONNECT_CONSUMER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
-#     CLASSPATH: /usr/share/java/monitoring-interceptors/monitoring-interceptors-5.4.0-beta1-SNAPSHOT.jar
     command:
       - bash
       - -c
@@ -159,16 +141,6 @@ services:
     volumes:
       - ./data/grafana:/var/lib/grafana
 
-#!#  jmx-file:
-#!#     image: jmxtrans/jmxtrans:latest
-#!#     depends_on:
-#!#       - kafka1
-#!#     container_name: jmx-file
-#!#     environment:
-#!#       - SECONDS_BETWEEN_RUNS=3
-#!#     volumes:
-#!#      - ./config/file.json:/var/lib/jmxtrans/jmx.json
-
   jmx-gde:
      image: jmxtrans/jmxtrans:latest
      depends_on:
@@ -199,18 +171,6 @@ services:
        - SECONDS_BETWEEN_RUNS=3
      volumes:
       - ./config/connect.json:/var/lib/jmxtrans/jmx.json
-
-
-#!#  jmx-kafka:
-#!#     image: jmxtrans/jmxtrans:latest
-#!#     depends_on:
-#!#       - kafka1
-#!#     container_name: jmx-kafka
-#!#     environment:
-#!#       - SECONDS_BETWEEN_RUNS=5
-#!#     volumes:
-#!#      - ./config/kafka.json:/var/lib/jmxtrans/jmx.json
- 
 
   influxdb:
      image: influxdb:1.1.0-alpine

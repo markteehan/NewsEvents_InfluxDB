@@ -65,16 +65,16 @@ do
   ccloud kafka topic delete ${i}
 done
 
-echo "about to delete these kSQL apps (usually there are none of these):"
-for i in `ccloud ksql app list|grep $USER`
-do  
-  echo $i
-done
-Pause
-echo "hit <return> to continue..."
-for i in `ccloud ksql app list|grep $USER|awk '{print $1}'`
-do  
-  echo ccloud ksql app delete $i
-       ccloud ksql app delete $i
-done
-
+#!# echo "about to delete these kSQL apps (usually there are none of these):"
+#!# for i in `ccloud ksql app list|grep $USER`
+#!# do  
+#!#   echo $i
+#!# done
+#!# Pause
+#!# echo "hit <return> to continue..."
+#!# for i in `ccloud ksql app list|grep $USER|awk '{print $1}'`
+#!# do  
+#!#   echo ccloud ksql app delete $i
+#!#        ccloud ksql app delete $i
+#!# done
+#!# 
