@@ -1,0 +1,259 @@
+#
+#You must allocate a minimum of 8 GB of Docker memory resource. The default memory allocation on Docker Desktop for Mac is 2 GB and must be changed.
+
+INTERACTIVE=Y
+
+echo;echo "About to run the demo using the ${CC_CLUSTER} cluster in your Confluent Cloud account"
+echo "Objects (topics, schemas, jobs) will be prefixed using your username ${USERNAME}"
+echo "to change this, set USERNAME as a variable at the start of this script"
+echo "hit <return> to continue"
+read hello
+
+
+if [ ${CC_PASSWORD}x = x ]
+then
+  echo;echo "export env vars CC_USERNAME and CC_PASSWORD before running this"
+  echo "these should contain your CC username (=your login email address) and your CC Secret"
+  echo "Depending on your shell and special characters, they may need to be in double quotes"
+  echo "Put it in your .profile if you are indeed foolish"
+  exit
+else
+     EMAIL=${CC_USERNAME}
+  PASSWORD=${CC_PASSWORD}
+fi
+##################################################
+# Log in to Confluent Cloud
+##################################################
+echo -e "\n# Login"
+OUTPUT=$(
+expect <<END
+  log_user 1
+  spawn ccloud login
+  expect "Email: "
+  send "$EMAIL\r";
+  expect "Password: "
+  send "$PASSWORD\r";
+  expect "Logged in as "
+  set result $expect_out(buffer)
+END
+)
+echo "$OUTPUT"
+if [[ ! "$OUTPUT" =~ "Logged in as" ]]; then
+  echo "ERROR: Failed to log into your cluster.  Please check all parameters and run again"
+  exit 1
+fi
+
+
+#
+# set the default cluster to  Default | ${CC_CLUSTER}
+#
+CLUSTER=`ccloud kafka cluster list|grep ${CC_CLUSTER}|awk '{print $2}'`
+echo "About to set the default cluster to  Default | ${CC_CLUSTER} (${CLUSTER}"
+echo ccloud kafka cluster use ${CLUSTER}
+     ccloud kafka cluster use ${CLUSTER}
+echo "Hit <return> to continue..."
+read hello
+
+
+
+run()
+{
+ clear
+ echo;echo $1
+}
+
+
+runSQL()
+{
+  echo "set 'auto.offset.reset'='earliest'; " > /tmp/cmda.sql
+  cat /tmp/cmda.sql /tmp/cmd.sql > /tmp/cmdb.sql
+  docker cp /tmp/cmdb.sql ksqldb-cli:/tmp/cmd.sql
+  docker exec -it ksqldb-cli bash -c "ksql http://ksqldb:8088 < /tmp/cmd.sql"
+  Pause
+}
+
+
+Pause()
+{
+  if [ "$INTERACTIVE" = "Y" ]
+  then
+    echo;echo "Paused. Hit <return> to continue"
+    read Pause
+    clear
+    echo;echo
+  else
+    echo "Sleeping for 30 seconds before running the next cmd..."
+    sleep 30
+    echo;echo;echo;echo "=================================================================="
+  fi
+}
+
+
+
+if [ "$INTERACTIVE" = "Y" ]
+then
+  echo " "
+else
+  echo;echo;echo "Sleeping for 2 mins to enable all containers to start"
+  echo "After 120 seconds the remaining steps will run automatically"
+  sleep 120
+  clear
+  Pause
+fi
+
+
+echo "Check status - is everything up?"
+docker-compose up --detach
+docker-compose ps
+Pause
+
+echo :"[] Setup Postgres: Truncate, drop, create table"
+docker         cp config/countries.sql Postgres:/var/tmp/countries.sql
+docker-compose exec postgres bash -c "psql -U postgres postgres -f /var/tmp/countries.sql"
+
+docker-compose -f docker-compose.yml exec postgres bash -c "psql -U postgres postgres -c \"DROP TABLE IF EXISTS GDELT_EVENT; \" "
+docker-compose -f docker-compose.yml exec postgres bash -c "psql -U postgres postgres -c \" CREATE TABLE IF NOT EXISTS GDELT_EVENT (TS VARCHAR, EVENTID BIGINT NOT NULL, EVENT_DATE VARCHAR(500) , MONTHYEAR VARCHAR(500) , YEAR VARCHAR(500) , FRACTIONDATE VARCHAR(500) , ACTOR1CODE VARCHAR(500), ACTOR1NAME VARCHAR(500), ACTOR1COUNTRYCODE VARCHAR(500), ACTOR1KNOWNGROUPCODE VARCHAR(500), ACTOR1ETHNICCODE VARCHAR(500), ACTOR1RELIGION1CODE VARCHAR(500), ACTOR1RELIGION2CODE VARCHAR(500), ACTOR1TYPE1CODE VARCHAR(500), ACTOR1TYPE2CODE VARCHAR(500), ACTOR1TYPE3CODE VARCHAR(500), ACTOR2CODE VARCHAR(500), ACTOR2NAME VARCHAR(500), ACTOR2COUNTRYCODE VARCHAR(500), ACTOR2KNOWNGROUPCODE VARCHAR(500), ACTOR2ETHNICCODE VARCHAR(500), ACTOR2RELIGION1CODE VARCHAR(500), ACTOR2RELIGION2CODE VARCHAR(500), ACTOR2TYPE1CODE VARCHAR(500), ACTOR2TYPE2CODE VARCHAR(500), ACTOR2TYPE3CODE VARCHAR(500), ISROOTEVENT VARCHAR(500) , EVENTCODE VARCHAR(500), EVENTBASECODE VARCHAR(500), EVENTROOTCODE VARCHAR(500), QUADCLASS VARCHAR(500) , GOLDSTEINSCALE VARCHAR(500) , NUMMENTIONS VARCHAR(500) , NUMSOURCES VARCHAR(500) , NUMARTICLES INTEGER , AVGTONE FLOAT, ACTOR1GEO_TYPE VARCHAR(500) , ACTOR1GEO_FULLNAME VARCHAR(500), ACTOR1GEO_COUNTRYCODE VARCHAR(500), ACTOR1GEO_ADM1CODE VARCHAR(500),ACTOR1GEO_ADM2CODE VARCHAR(500), ACTOR1GEO_LAT VARCHAR(500) , ACTOR1GEO_LONG VARCHAR(500) , ACTOR1GEO_FEATUREID VARCHAR(500), ACTOR2GEO_TYPE VARCHAR(10), ACTOR2GEO_FULLNAME VARCHAR(500), ACTOR2GEO_COUNTRYCODE VARCHAR(500), ACTOR2GEO_ADM1CODE VARCHAR(500),ACTOR2GEO_ADM2CODE VARCHAR(500), ACTOR2GEO_LAT VARCHAR(500) , ACTOR2GEO_LONG VARCHAR(500) , ACTOR2GEO_FEATUREID VARCHAR(500), ACTIONGEO_TYPE VARCHAR(500), ACTIONGEO_FULLNAME VARCHAR(500), ACTIONGEO_COUNTRYCODE VARCHAR(500), ACTIONGEO_ADM1CODE VARCHAR(500),ACTIONGEO_ADM2CODE VARCHAR(500), ACTIONGEO_LAT VARCHAR(500), ACTIONGEO_LONG VARCHAR(500), ACTIONGEO_FEATUREID VARCHAR(500), DATEADDED VARCHAR(200), SOURCEURL VARCHAR(5000));\" "
+Pause
+
+FILE=20190712181500.export.csv
+echo "[] Loading a test dataset of 239 rows from  data/gdelt/${FILE} into Postgres ..."
+TS=`echo $FILE|awk -F\. '{print $1}'`
+cp data/gdelt/${FILE} /tmp/${FILE}
+cat /tmp/${FILE} | sed "s/^/${TS}	/" > /tmp/${FILE}.1
+
+docker cp /tmp/${FILE}.1 Postgres:/var/tmp/${FILE}
+docker-compose -f docker-compose.yml exec postgres bash -c "psql -U postgres postgres -c \"delete from GDELT_EVENT; \" "
+docker-compose -f docker-compose.yml exec postgres bash -c "psql -U postgres postgres -c \"\\copy GDELT_EVENT FROM '/var/tmp/${FILE}' WITH delimiter E'\t' null as ';' \" "
+docker-compose -f docker-compose.yml exec postgres bash -c "psql -U postgres postgres -c \"SELECT count(*) as ROWCOUNT_OF_NEWS_STORIES from GDELT_EVENT;\" "
+Pause
+
+set -x
+ccloud kafka topic create ${USER}_A0_gdelt_event
+ccloud kafka topic create ${USER}_A0_countries
+set +x
+
+
+echo "[] Create two connectors to stream two Postgres tables to CC"
+cat <<EOF >/tmp/cmd.sql
+CREATE SOURCE CONNECTOR ${USER}_A0_GDELT_EVENT WITH ('connector.class'='io.confluent.connect.jdbc.JdbcSourceConnector', 'connection.url'='jdbc:postgresql://postgres:5432/postgres?user=postgres&password=postgres', 'mode'='incrementing','incrementing.column.name'='eventid', 'topic.prefix'='${USER}_A0_','table.whitelist'='gdelt_event','numeric.mapping'='best_fit','schema.pattern'='public','topic.creation.default.replication.factor'='3','poll.interval.ms'='2000');
+
+CREATE SOURCE CONNECTOR ${USER}_A0_COUNTRIES WITH ( 'connector.class'='io.confluent.connect.jdbc.JdbcSourceConnector', 'connection.url'='jdbc:postgresql://postgres:5432/postgres?user=postgres&password=postgres', 'mode'='incrementing','incrementing.column.name'='id', 'topic.prefix'='${USER}_A0_','table.whitelist'='countries','numeric.mapping'='best_fit','schema.pattern'='public','topic.creation.default.replication.factor'='3');
+EOF
+runSQL
+
+
+echo;echo "[] All Connectors:"
+cat <<EOF >/tmp/cmd.sql
+SHOW CONNECTORS;
+EOF
+runSQL
+
+#echo ccloud ksql app create ${USER}
+#     ccloud ksql app create ${USER}
+
+# get the ksql Cluster ID
+#SLEEP=60
+#echo "Sleeping for ${SLEEP} secs while kSQL app ${APP} is created.."
+##sleep $AVRO_GDELT_EVENT{SLEEP}
+#PAUSE="1 2 3 4 5 6 7 8 9 10"
+#for i in `echo $PAUSE`
+#do 
+#  date
+#  ccloud ksql app list
+#  sleep 10
+#done
+#
+#KSQL_CLUSTER=`ccloud ksql app list|grep ${USER}|awk '{print $1}'`
+#set -x
+#ccloud ksql app configure-acls ${KSQL_CLUSTER} ${USER}_AVRO_GDELT_EVENT --cluster ${CLUSTER}
+#ccloud ksql app configure-acls ${KSQL_CLUSTER} ${USER}_COUNTRIES        --cluster ${CLUSTER}
+#set +x
+
+#➜  37_e2e ccloud kafka acl create --allow --service-account 62372 --operation READ --topic '*'
+#➜  37_e2e ccloud kafka acl create --allow --service-account 62372 --operation WRITE --topic '*'
+
+
+echo;echo;echo
+
+
+
+echo "[] Create a base stream (A0) over each topic"
+cat <<EOF >/tmp/cmd.sql
+CREATE STREAM ${USER}_A0_STR_GDELT_EVENT WITH (kafka_topic='${USER}_A0_gdelt_event',value_format='avro',partitions=6);
+CREATE STREAM ${USER}_A0_STR_COUNTRIES   WITH (kafka_topic='${USER}_A0_countries'  ,value_format='avro',partitions=6);
+EOF
+runSQL
+
+
+
+echo "[] Repartition a topic to set the key to ACTOR1COUNTRYCODE"
+cat <<EOF >/tmp/cmd.sql
+CREATE STREAM ${USER}_A1_STR_GDELT_EVENT WITH (kafka_topic='${USER}_A1_STR_GDELT_EVENT', value_format='avro',partitions=6) AS SELECT * FROM ${USER}_A0_STR_GDELT_EVENT PARTITION BY ACTOR1COUNTRYCODE;
+EOF
+runSQL
+
+
+echo "[] Create a kSQL TABLE that counts messages in the stream using 'Group by 0'. Wrap it in a JSON structure to be sink'd to InfluxDB as Tags"
+cat <<EOF >/tmp/cmd.sql
+CREATE TABLE ${USER}_A2_TAB_GDELT_EVENT WITH (kafka_topic='${USER}_A2_TAB_GDELT_EVENT',value_format='KAFKA',partitions=6) AS SELECT replace(replace(replace(' {"schema":{"type":"struct","fields":[{"type":"map","keys":{"type":"string","optional":false},"values":{"type":"string","optional":false},"optional":false,"field":"tags"},{"type":"string","optional":false,"field":"time"},{"type":"double","optional":true,"field":"value"}],"optional":false,"version":1},"payload":{"tags":{"id":"REPLACEME_ID"},"time":"REPLACEME_TS","value":REPLACEME_VALUE}}' ,'REPLACEME_ID'   ,'${USER}_A2_TAB_GDELT_EVENT_ROWS'     ) ,'REPLACEME_TS'   ,cast(    max(STRINGTOTIMESTAMP(TS, 'yyyyMMddHHmmss', 'UTC')     ) as STRING) ) ,'REPLACEME_VALUE',cast(count(*) as STRING)) as influx_json_row FROM ${USER}_A1_STR_GDELT_EVENT GROUP BY 0;
+EOF
+runSQL
+
+echo "[] Drop this measurement from InfluxDB before starting the new stream"
+echo "/usr/bin/influx --database gdelt --execute 'DROP MEASUREMENT ${USER}_B2_TAB_GDELT_EVENT;'" > /tmp/drop.cmd
+chmod +x /tmp/drop.cmd
+docker cp /tmp/drop.cmd influxdb:/tmp/drop.cmd
+docker-compose exec influxdb sh /tmp/drop.cmd
+
+echo "[] Start a Sink connector stream to InfluxDB"
+cat <<EOF >/tmp/cmd.sql
+CREATE SINK CONNECTOR ${USER}_A3_TAB_GDELT_EVENT_SINK WITH ( 'connector.class'='io.confluent.influxdb.InfluxDBSinkConnector','tasks.max'='1','topics'='${USER}_A2_TAB_GDELT_EVENT','influxdb.url'='http://influxdb:8086', 'influxdb.db'='gdelt','influx.db.username'='root','influxdb.password'='root','measurement.name.format'='${USER}_A3_TAB_GDELT_EVENT','value.converter'='org.apache.kafka.connect.json.JsonConverter','auto.register.schemas'='false');
+EOF
+runSQL
+
+echo "[] Reality check: did message stream to InfluxDB?"
+echo "/usr/bin/influx --database gdelt --execute 'SELECT * FROM ${USER}_A3_TAB_GDELT_EVENT;'" > /tmp/influx.cmd
+chmod +x /tmp/influx.cmd
+docker cp /tmp/influx.cmd influxdb:/tmp/influx.cmd
+echo;echo "echo: end-to-end Test: rowcount of streamed rows Sink'd into Influx (on your mac)"
+docker-compose exec influxdb sh /tmp/influx.cmd
+echo "Run this command to get the latest number:"
+echo docker-compose exec influxdb sh /tmp/influx.cmd
+
+echo "[] Start the Second streaming thread (B) by joining GDELT_EVENTs to COUNTRIES to get the Country Name as ISO3"
+cat <<EOF >/tmp/cmd.sql
+CREATE STREAM ${USER}_B1_STR_GDELT_EVENT_COUNTRY WITH (kafka_topic='${USER}_B1_STR_GDELT_EVENT_COUNTRY', value_format='avro',partitions=6) AS SELECT TS, EVENTID as EVENTID, MONTHYEAR,YEAR,FRACTIONDATE,ACTOR1CODE,ISO3, ACTOR1NAME,ACTOR1COUNTRYCODE,ACTOR1KNOWNGROUPCODE,ACTOR1ETHNICCODE,ACTOR1RELIGION1CODE,ACTOR1RELIGION2CODE,ACTOR1TYPE1CODE,ACTOR1TYPE2CODE,ACTOR1TYPE3CODE,ACTOR2CODE,ACTOR2NAME,ACTOR2COUNTRYCODE,ACTOR2KNOWNGROUPCODE,ACTOR2ETHNICCODE,ACTOR2RELIGION1CODE,ACTOR2RELIGION2CODE,ACTOR2TYPE1CODE,ACTOR2TYPE2CODE,ACTOR2TYPE3CODE,ISROOTEVENT,EVENTCODE,EVENTBASECODE,EVENTROOTCODE,QUADCLASS,GOLDSTEINSCALE,NUMMENTIONS,NUMSOURCES,NUMARTICLES,AVGTONE,ACTOR1GEO_TYPE,ACTOR1GEO_FULLNAME,ACTOR1GEO_COUNTRYCODE,ACTOR1GEO_ADM1CODE,ACTOR1GEO_ADM2CODE,ACTOR1GEO_LAT,ACTOR1GEO_LONG,ACTOR1GEO_FEATUREID,ACTOR2GEO_TYPE,ACTOR2GEO_FULLNAME,ACTOR2GEO_COUNTRYCODE,ACTOR2GEO_ADM1CODE,ACTOR2GEO_ADM2CODE,ACTOR2GEO_LAT,ACTOR2GEO_LONG,ACTOR2GEO_FEATUREID,ACTIONGEO_TYPE,ACTIONGEO_FULLNAME,ACTIONGEO_COUNTRYCODE,ACTIONGEO_ADM1CODE,ACTIONGEO_ADM2CODE,ACTIONGEO_LAT,ACTIONGEO_LONG,ACTIONGEO_FEATUREID,DATEADDED,SOURCEURL, NAME as ACTOR1_COUNTRYNAME FROM ${USER}_A0_STR_GDELT_EVENT JOIN ${USER}_A0_STR_COUNTRIES WITHIN 60 MINUTES ON (ACTOR1COUNTRYCODE=ISO3);
+EOF
+runSQL
+
+
+echo "[] Create a kSQL Table to count new stories by country; wrapped in a JSON structure to be Sink'd to InfluxDB"
+cat <<EOF >/tmp/cmd.sql
+CREATE TABLE ${USER}_B2_TAB_GDELT_EVENT_COUNTRY WITH (kafka_topic='${USER}_B2_TAB_GDELT_EVENT_COUNTRY',value_format='KAFKA',partitions=6) AS SELECT replace(replace(replace(' {"schema":{"type":"struct","fields":[{"type":"map","keys":{"type":"string","optional":false},"values":{"type":"string","optional":false},"optional":false,"field":"tags"},{"type":"string","optional":false,"field":"time"},{"type":"double","optional":true,"field":"value"}],"optional":false,"version":1},"payload":{"tags":{"id":"REPLACEME_ID"},"time":"REPLACEME_TS","value":REPLACEME_VALUE}}' ,'REPLACEME_ID'   ,ISO3     ) ,'REPLACEME_TS'   ,cast(    max(STRINGTOTIMESTAMP(TS, 'yyyyMMddHHmmss', 'UTC')     ) as STRING) ) ,'REPLACEME_VALUE',cast(count(*) as STRING)) as influx_json_row FROM ${USER}_B1_STR_GDELT_EVENT_COUNTRY GROUP BY ISO3;
+EOF
+runSQL
+
+#clean up the InfluxDB Sink measurement first...
+echo "[] Drop this measurement from InfluxDB before starting the new stream"
+echo "/usr/bin/influx --database gdelt --execute 'DROP MEASUREMENT ${USER}_B2_TAB_GDELT_EVENT_COUNTRY;'" > /tmp/drop.cmd
+docker cp /tmp/drop.cmd influxdb:/tmp/drop.cmd
+docker-compose exec influxdb sh /tmp/drop.cmd
+
+
+echo "[] Start the second Sink connector stream to InfluxDB"
+cat <<EOF >/tmp/cmd.sql
+CREATE SINK CONNECTOR ${USER}_B3_TAB_GDELT_EVENT_COUNTRY_SINK WITH ( 'connector.class'='io.confluent.influxdb.InfluxDBSinkConnector','tasks.max'='1','topics'='${USER}_B2_TAB_GDELT_EVENT_COUNTRY','influxdb.url'='http://influxdb:8086', 'influxdb.db'='gdelt','influx.db.username'='root','influxdb.password'='root','measurement.name.format'='${USER}_B2_TAB_GDELT_EVENT_COUNTRY','value.converter'='org.apache.kafka.connect.json.JsonConverter','auto.register.schemas'='false');
+EOF
+runSQL
+
+
+echo "[] Second reality check: did message stream to InfluxDB?"
+echo "/usr/bin/influx --database gdelt --execute 'SELECT * FROM ${USER}_B2_TAB_GDELT_EVENT_COUNTRY;'" > /tmp/influx2.cmd
+chmod +x /tmp/influx2.cmd
+docker cp /tmp/influx2.cmd influxdb:/tmp/influx2.cmd
+echo;echo "echo: end-to-end Test: rowcount of streamed rows Sink'd into Influx (on your mac)"
+docker-compose exec influxdb sh /tmp/influx2.cmd
+echo "Run this command to get the latest number:"
+echo docker-compose exec influxdb sh /tmp/influx2.cmd
+
+echo "[] Full streaming pipeline created! Now run getNews to load up yesterdays news (usually 10-20 mins)"

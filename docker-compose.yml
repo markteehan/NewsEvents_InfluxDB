@@ -1,0 +1,243 @@
+version: '3'
+services:
+  ksqldb:
+    image: confluentinc/ksqldb-server:0.8.1
+    hostname: ksqldb
+    container_name: ksqldb
+    ports:
+      - 8088:8088
+    environment:
+      KSQL_LISTENERS: http://0.0.0.0:8088
+      KSQL_BOOTSTRAP_SERVERS: "https://pkc-l9wvm.ap-southeast-1.aws.confluent.cloud:9092"
+      KSQL_SECURITY_PROTOCOL: "SASL_SSL"
+      KSQL_SASL_MECHANISM: "PLAIN"
+      KSQL_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: "HTTPS"
+      KSQL_SASL_JAAS_CONFIG: |
+           org.apache.kafka.common.security.plain.PlainLoginModule required \
+           username="3QIZLTBOQYVZMLJQ" \
+           password="7gBRUNKe8fvPk2QWVYbPW9yXg5EwA7UbN2QJ+S8/+HrNjrjGQ83SklyTKJEgoKB6";
+      KSQL_KSQL_CONNECT_URL: http://kafka-connect-01:8083
+      KSQL_KSQL_SCHEMA_REGISTRY_URL: "https://psrc-epkz2.ap-southeast-2.aws.confluent.cloud"
+      KSQL_KSQL_SCHEMA_REGISTRY_BASIC_AUTH_CREDENTIALS_SOURCE: "USER_INFO" 
+      KSQL_KSQL_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XV7XMYL2PUFOG2US:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
+      KSQL_KSQL_SERVICE_ID: "${USER}_"
+      KSQL_KSQL_INTERNAL_TOPIC_REPLICAS: 3
+      KSQL_AUTO_OFFSET_RESET: "earliest"
+      KSQL_KSQL_LOGGING_PROCESSING_TOPIC_REPLICATION_FACTOR: 3
+      KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
+      KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: "true"
+      KSQL_CACHE_MAX_BYTES_BUFFERING: 0
+      KSQL_KSQL_STREAMS_REPLICATION_FACTOR: 3
+
+  ksqldb-cli:
+    image: confluentinc/ksqldb-cli:0.7.1
+    container_name: ksqldb-cli
+    depends_on:
+      - ksqldb
+      - postgres
+    entrypoint: /bin/sh
+    tty: true
+    environment:
+#     KSQL_LISTENERS: http://0.0.0.0:8088
+#     KSQL_BOOTSTRAP_SERVERS: "https://pkc-l9wvm.ap-southeast-1.aws.confluent.cloud:9092"
+#     KSQL_SECURITY_PROTOCOL: "SASL_SSL"
+#     KSQL_SASL_MECHANISM: "PLAIN"
+#     KSQL_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: "HTTPS"
+#     KSQL_SASL_JAAS_CONFIG: |
+#          org.apache.kafka.common.security.plain.PlainLoginModule required \
+#          username="3QIZLTBOQYVZMLJQ" \
+#          password="7gBRUNKe8fvPk2QWVYbPW9yXg5EwA7UbN2QJ+S8/+HrNjrjGQ83SklyTKJEgoKB6";
+#     KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
+#     KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: "true"
+#     KSQL_KSQL_CONNECT_URL: http://kafka-connect-01:8083
+      KSQL_KSQL_SCHEMA_REGISTRY_URL: "https://psrc-epkz2.ap-southeast-2.aws.confluent.cloud"
+      KSQL_KSQL_SCHEMA_REGISTRY_BASIC_AUTH_CREDENTIALS_SOURCE: "USER_INFO" 
+      KSQL_KSQL_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XV7XMYL2PUFOG2US:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
+#     KSQL_KSQL_SERVICE_ID: "${USER}_"
+#     KSQL_KSQL_INTERNAL_TOPIC_REPLICAS: 3
+#     KSQL_AUTO_OFFSET_RESET: "earliest"
+
+  kafka-connect-01:
+    image: confluentinc/cp-kafka-connect:5.4.0
+    container_name: kafka-connect-01
+    ports:
+      - 8083:8083
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: "https://pkc-l9wvm.ap-southeast-1.aws.confluent.cloud:9092"
+      CONNECT_SECURITY_PROTOCOL: "SASL_SSL"
+      CONNECT_SASL_MECHANISM: "PLAIN"
+      CONNECT_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: "HTTPS"
+      CONNECT_SASL_JAAS_CONFIG: |
+           org.apache.kafka.common.security.plain.PlainLoginModule required \
+           username="3QIZLTBOQYVZMLJQ" \
+           password="7gBRUNKe8fvPk2QWVYbPW9yXg5EwA7UbN2QJ+S8/+HrNjrjGQ83SklyTKJEgoKB6";
+      CONNECT_PRODUCER_SECURITY_PROTOCOL: "SASL_SSL"
+      CONNECT_PRODUCER_SASL_MECHANISM: "PLAIN"
+      CONNECT_PRODUCER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: "HTTPS"
+      CONNECT_PRODUCER_SASL_JAAS_CONFIG: |
+           org.apache.kafka.common.security.plain.PlainLoginModule required \
+           username="3QIZLTBOQYVZMLJQ" \
+           password="7gBRUNKe8fvPk2QWVYbPW9yXg5EwA7UbN2QJ+S8/+HrNjrjGQ83SklyTKJEgoKB6";
+      CONNECT_CONSUMER_SECURITY_PROTOCOL: "SASL_SSL"
+      CONNECT_CONSUMER_SASL_MECHANISM: "PLAIN"
+      CONNECT_CONSUMER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: "HTTPS"
+      CONNECT_CONSUMER_SASL_JAAS_CONFIG: |
+           org.apache.kafka.common.security.plain.PlainLoginModule required \
+           username="3QIZLTBOQYVZMLJQ" \
+           password="7gBRUNKe8fvPk2QWVYbPW9yXg5EwA7UbN2QJ+S8/+HrNjrjGQ83SklyTKJEgoKB6";
+      JMX_PORT: 3001
+      JMX_HOSTNAME: kafka-connect-01
+      CONNECT_LOG4J_APPENDER_STDOUT_LAYOUT_CONVERSIONPATTERN: "[%d] %p %X{connector.context}%m (%c:%L)%n"
+      CONNECT_CUB_KAFKA_TIMEOUT: 3000
+      CONNECT_OFFSET_FLUSH_TIMEOUT_MS: 60000
+      CONNECT_REQUEST_TIMOUT_MS: 60000
+      CONNECT_CONSUMER_REQUEST_TIMEOUT_MS: 60000
+      CONNECT_PRODUCER_REQUEST_TIMEOUT_MS: 60000
+      CONNECT_RETRY_BACKOFF_MS: 500
+      CONNECT_REST_ADVERTISED_HOST_NAME: 'kafka-connect-01'
+      CONNECT_REST_PORT: 8083
+      CONNECT_GROUP_ID: e2e-connect
+      CONNECT_CONFIG_STORAGE_TOPIC: ${USER}-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: ${USER}-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: ${USER}-status
+      CONNECT_KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: "https://psrc-epkz2.ap-southeast-2.aws.confluent.cloud"
+      CONNECT_KEY_CONVERTER_BASIC_AUTH_CREDENTIALS_SOURCE: "USER_INFO" 
+      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XV7XMYL2PUFOG2US:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
+      CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: "https://psrc-epkz2.ap-southeast-2.aws.confluent.cloud"
+      CONNECT_VALUE_CONVERTER_BASIC_AUTH_CREDENTIALS_SOURCE: "USER_INFO" 
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XV7XMYL2PUFOG2US:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
+#      CONNECT_INTERNAL_KEY_CONVERTER: 'org.apache.kafka.connect.json.JsonConverter'
+#      CONNECT_INTERNAL_VALUE_CONVERTER: 'org.apache.kafka.connect.json.JsonConverter'
+      CONNECT_LOG4J_ROOT_LOGLEVEL: 'INFO'
+      CONNECT_LOG4J_LOGGERS: 'org.apache.kafka.connect.runtime.rest=WARN,org.reflections=ERROR'
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_PLUGIN_PATH: '/usr/share/java,/usr/share/confluent-hub-components/'
+      CONNECT_SCHEMA_REGISTRY_URL: "https://psrc-epkz2.ap-southeast-2.aws.confluent.cloud"
+      CONNECT_BASIC_AUTH_CREDENTIALS_SOURCE: "USER_INFO" 
+      CONNECT_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XV7XMYL2PUFOG2US:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
+#      CONNECT_PRODUCER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor"
+#      CONNECT_CONSUMER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
+#     CLASSPATH: /usr/share/java/monitoring-interceptors/monitoring-interceptors-5.4.0-beta1-SNAPSHOT.jar
+    command:
+      - bash
+      - -c
+      - |
+        echo "Installing Connector"
+        confluent-hub install --no-prompt confluentinc/kafka-connect-influxdb:1.1.2
+        #
+        echo "Launching Kafka Connect worker"
+        /etc/confluent/docker/run &
+        #
+        sleep infinity
+
+
+  postgres:
+      image: "postgres"
+      container_name: "Postgres"
+      environment:
+        - POSTGRES_USER=postgres
+        - POSTGRES_PASSWORD=postgres
+        - POSTGRES_DB=mydb
+        - "54320:5432"
+      volumes:
+        - ./data/postgres:/var/tmp/postgresql-data
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: "grafana"
+    links:
+      - influxdb
+    user: "501"
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_DEFAULT_THEME=light
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+
+#!#  jmx-file:
+#!#     image: jmxtrans/jmxtrans:latest
+#!#     depends_on:
+#!#       - kafka1
+#!#     container_name: jmx-file
+#!#     environment:
+#!#       - SECONDS_BETWEEN_RUNS=3
+#!#     volumes:
+#!#      - ./config/file.json:/var/lib/jmxtrans/jmx.json
+
+  jmx-gde:
+     image: jmxtrans/jmxtrans:latest
+     depends_on:
+       - influxdb
+     container_name: jmx-gde
+     environment:
+       - SECONDS_BETWEEN_RUNS=3
+     volumes:
+      - ./config/gde.json:/var/lib/jmxtrans/jmx.json
+ 
+  jmx-ksqldb:
+     image: jmxtrans/jmxtrans:latest
+     depends_on:
+       - ksqldb
+     container_name: jmx-ksqldb
+     environment:
+       - SECONDS_BETWEEN_RUNS=3
+     volumes:
+      - ./config/ksql.json:/var/lib/jmxtrans/jmx.json
+
+  jmx-connect:
+     image: jmxtrans/jmxtrans:latest
+     depends_on:
+       - kafka-connect-01
+       - influxdb
+     container_name: jmx-connect
+     environment:
+       - SECONDS_BETWEEN_RUNS=3
+     volumes:
+      - ./config/connect.json:/var/lib/jmxtrans/jmx.json
+
+
+#!#  jmx-kafka:
+#!#     image: jmxtrans/jmxtrans:latest
+#!#     depends_on:
+#!#       - kafka1
+#!#     container_name: jmx-kafka
+#!#     environment:
+#!#       - SECONDS_BETWEEN_RUNS=5
+#!#     volumes:
+#!#      - ./config/kafka.json:/var/lib/jmxtrans/jmx.json
+ 
+
+  influxdb:
+     image: influxdb:1.1.0-alpine
+     container_name: influxdb
+     environment:
+       - INFLUXDB_HTTP_LOG_ENABLED=false
+       - INFLUXDB_LOGGING_LEVEL=INFO
+     ports:
+       - 8086:8086
+     volumes:
+       - ./data/influx/:/var/lib/influxdb
+ 
+  chronograf:
+    image: chronograf:latest
+    container_name: chronograf
+    volumes:
+      # Mount for chronograf database
+      - ./data/chronograf/:/var/lib/chronograf/
+    ports:
+      # The WebUI for Chronograf is served on port 8888
+      - "8888:8888"
+    depends_on:
+      - influxdb
+
+volumes:
+    # This volume is mounted on an image in which the interceptor JARs do exist
+    # so that it can also be mounted on others where they do not, in order
+    # that those others can also make use of the interceptors. Neat huh!
+    # Props to ybyzek for this trick
+    monitoring_interceptors: {}

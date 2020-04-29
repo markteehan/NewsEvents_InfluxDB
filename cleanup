@@ -1,0 +1,80 @@
+
+##################################################
+# Log in to Confluent Cloud
+##################################################
+
+
+
+Pause()
+{
+    echo;echo "Paused. Hit <return> to continue"
+    read Pause
+    echo;echo
+}
+
+
+
+echo;echo "About to tear down the demo using the GlobeDev cluster in the SalesEngineering Account"
+echo "Objects (topics, schemas, jobs) prefixed using your username ${USERNAME} will be dropped"
+Pause
+
+
+if [ ${CC_PASSWORD}x = x ]
+then
+  echo;echo "export env vars CC_USERNAME and CC_PASSWORD before running this"
+  echo "these should contain your CC username (=your login email address) and your CC Secret"
+  echo "Depending on your shell and special characters, they may need to be in double quotes"
+  echo "Put it in your .profile if you are indeed foolish"
+  exit
+else
+     EMAIL=${CC_USERNAME}
+  PASSWORD=${CC_PASSWORD}
+fi
+
+
+echo -e "\n# Login"
+OUTPUT=$(
+expect <<END
+  log_user 1
+  spawn ccloud login
+  expect "Email: "
+  send "$EMAIL\r";
+  expect "Password: "
+  send "$PASSWORD\r";
+  expect "Logged in as "
+  set result $expect_out(buffer)
+END
+)
+echo "$OUTPUT"
+if [[ ! "$OUTPUT" =~ "Logged in as" ]]; then
+  echo "ERROR: Failed to log into your cluster.  Please check all parameters and run again"
+  exit 1
+fi
+
+
+echo "About to delete these topics:"
+for i in `ccloud kafka topic list`
+do
+ echo $i
+done
+Pause
+
+for i in `ccloud kafka topic list`
+do
+  echo ccloud kafka topic delete ${i}
+  ccloud kafka topic delete ${i}
+done
+
+echo "about to delete these kSQL apps (usually there are none of these):"
+for i in `ccloud ksql app list|grep $USER`
+do  
+  echo $i
+done
+Pause
+echo "hit <return> to continue..."
+for i in `ccloud ksql app list|grep $USER|awk '{print $1}'`
+do  
+  echo ccloud ksql app delete $i
+       ccloud ksql app delete $i
+done
+
