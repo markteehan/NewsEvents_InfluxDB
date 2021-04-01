@@ -14,12 +14,12 @@ services:
       KSQL_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: "HTTPS"
       KSQL_SASL_JAAS_CONFIG: |
            org.apache.kafka.common.security.plain.PlainLoginModule required \
-           username="3QIZLTBOQYVZMLJQ" \
+           username="XX" \
            password="7gBRUNKe8fvPk2QWVYbPW9yXg5EwA7UbN2QJ+S8/+HrNjrjGQ83SklyTKJEgoKB6";
       KSQL_KSQL_CONNECT_URL: http://kafka-connect-01:8083
       KSQL_KSQL_SCHEMA_REGISTRY_URL: "https://psrc-epkz2.ap-southeast-2.aws.confluent.cloud"
       KSQL_KSQL_SCHEMA_REGISTRY_BASIC_AUTH_CREDENTIALS_SOURCE: "USER_INFO" 
-      KSQL_KSQL_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XV7XMYL2PUFOG2US:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
+      KSQL_KSQL_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XX:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
       KSQL_KSQL_SERVICE_ID: "${USER}_"
       KSQL_KSQL_INTERNAL_TOPIC_REPLICAS: 3
       KSQL_AUTO_OFFSET_RESET: "earliest"
@@ -40,7 +40,7 @@ services:
     environment:
       KSQL_KSQL_SCHEMA_REGISTRY_URL: "https://psrc-epkz2.ap-southeast-2.aws.confluent.cloud"
       KSQL_KSQL_SCHEMA_REGISTRY_BASIC_AUTH_CREDENTIALS_SOURCE: "USER_INFO" 
-      KSQL_KSQL_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XV7XMYL2PUFOG2US:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
+      KSQL_KSQL_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XX:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
 
   kafka-connect-01:
     image: confluentinc/cp-kafka-connect:5.4.0
@@ -54,21 +54,21 @@ services:
       CONNECT_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: "HTTPS"
       CONNECT_SASL_JAAS_CONFIG: |
            org.apache.kafka.common.security.plain.PlainLoginModule required \
-           username="3QIZLTBOQYVZMLJQ" \
+           username="XX" \
            password="7gBRUNKe8fvPk2QWVYbPW9yXg5EwA7UbN2QJ+S8/+HrNjrjGQ83SklyTKJEgoKB6";
       CONNECT_PRODUCER_SECURITY_PROTOCOL: "SASL_SSL"
       CONNECT_PRODUCER_SASL_MECHANISM: "PLAIN"
       CONNECT_PRODUCER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: "HTTPS"
       CONNECT_PRODUCER_SASL_JAAS_CONFIG: |
            org.apache.kafka.common.security.plain.PlainLoginModule required \
-           username="3QIZLTBOQYVZMLJQ" \
+           username="XX" \
            password="7gBRUNKe8fvPk2QWVYbPW9yXg5EwA7UbN2QJ+S8/+HrNjrjGQ83SklyTKJEgoKB6";
       CONNECT_CONSUMER_SECURITY_PROTOCOL: "SASL_SSL"
       CONNECT_CONSUMER_SASL_MECHANISM: "PLAIN"
       CONNECT_CONSUMER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: "HTTPS"
       CONNECT_CONSUMER_SASL_JAAS_CONFIG: |
            org.apache.kafka.common.security.plain.PlainLoginModule required \
-           username="3QIZLTBOQYVZMLJQ" \
+           username="XX" \
            password="7gBRUNKe8fvPk2QWVYbPW9yXg5EwA7UbN2QJ+S8/+HrNjrjGQ83SklyTKJEgoKB6";
       JMX_PORT: 3001
       JMX_HOSTNAME: kafka-connect-01
@@ -88,11 +88,11 @@ services:
       CONNECT_KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
       CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: "https://psrc-epkz2.ap-southeast-2.aws.confluent.cloud"
       CONNECT_KEY_CONVERTER_BASIC_AUTH_CREDENTIALS_SOURCE: "USER_INFO" 
-      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XV7XMYL2PUFOG2US:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
+      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XX:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
       CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
       CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: "https://psrc-epkz2.ap-southeast-2.aws.confluent.cloud"
       CONNECT_VALUE_CONVERTER_BASIC_AUTH_CREDENTIALS_SOURCE: "USER_INFO" 
-      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XV7XMYL2PUFOG2US:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XX:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
 #      CONNECT_INTERNAL_KEY_CONVERTER: 'org.apache.kafka.connect.json.JsonConverter'
 #      CONNECT_INTERNAL_VALUE_CONVERTER: 'org.apache.kafka.connect.json.JsonConverter'
       CONNECT_LOG4J_ROOT_LOGLEVEL: 'INFO'
@@ -103,7 +103,7 @@ services:
       CONNECT_PLUGIN_PATH: '/usr/share/java,/usr/share/confluent-hub-components/'
       CONNECT_SCHEMA_REGISTRY_URL: "https://psrc-epkz2.ap-southeast-2.aws.confluent.cloud"
       CONNECT_BASIC_AUTH_CREDENTIALS_SOURCE: "USER_INFO" 
-      CONNECT_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XV7XMYL2PUFOG2US:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
+      CONNECT_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: "XX:RuOAh3QyYxjl0zUcUF8Ta8KSKZ00YtS1ugYmtyniRwGf3xQnI4srbfseeE0xRygV" 
     command:
       - bash
       - -c
